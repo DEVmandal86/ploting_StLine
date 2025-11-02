@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Integer Graph Plotter</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      font-family: system-ui, sans-serif;
+    }
+
+    body {
+      margin: 0;
+      padding: 0;
+      background: #f0f2f5;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    header {
+      background: #222;
+      color: white;
+      padding: 1rem;
+      width: 100%;
+      text-align: center;
+      font-size: 1.4rem;
+    }
+
+    main {
+      width: 90%;
+      max-width: 900px;
+      margin-top: 1rem;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    form {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.5rem;
+      background: white;
+      padding: 1rem;
+      border-radius: 10px;
+      box-shadow: 0 0 8px rgba(0,0,0,0.1);
+    }
+
+    input[type="number"], input[type="text"] {
+      padding: 0.5rem;
+      font-size: 1rem;
+      border-radius: 5px;
+      border: 1px solid #aaa;
+      width: 220px;
+    }
+
+    button {
+      padding: 0.6rem 1rem;
+      background: #007bff;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 1rem;
+    }
+
+    button:hover {
+      background: #0056b3;
+    }
+
+    #pointsInput {
+      display: flex;
+      flex-direction: column;
+      gap: 0.3rem;
+      width: 250px;
+      text-align: center;
+    }
+
+    #graphContainer {
+      width: 100%;
+      height: 400px; /* SHORTER graph */
+      background: white;
+      border-radius: 10px;
+      box-shadow: 0 0 8px rgba(0,0,0,0.1);
+      padding: 1rem;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    canvas {
+      width: 100% !important;
+      height: 100% !important;
+    }
+  </style>
+</head>
+<body>
+  <header>Integer Cartesian Plotter</header>
+
+  <main>
+    <form id="pointForm">
+      <label>Enter number of points:</label>
+      <input type="number" id="numPoints" min="1" required />
+      <button type="button" id="generateInputs">Generate Inputs</button>
+
+      <div id="pointsInput"></div>
+
+      <button type="button" id="plotButton" style="display:none;">Plot Points</button>
+    </form>
+
+    <div id="graphContainer">
+      <canvas id="plotCanvas"></canvas>
+    </div>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script>
+    const numPointsInput = document.getElementById("numPoints");
+    const generateInputsBtn = document.getElementById("generateInputs");
+    const pointsInputDiv = document.getElementById("pointsInput");
+    const plotButton = document.getElementById("plotButton");
+    const ctx = document.getElementById("plotCanvas").getContext("2d");
+    let chart = null;
+
+    generateInputsBtn.addEventListener("click", () => {
+      const numPoints = parseInt(numPointsInput.value);
+      pointsInputDiv.innerHTML = "";
+      if (isNaN(numPoints) || numPoints <= 0) {
+        alert("Enter a valid number of points!");
+        return;
+      }
+
+      for (let i = 0; i < numPoints; i++) {
+        const input = document.createElement("input");
+        input.type = "text";
+        input.placeholder = `Point ${i + 1} (x,y)`;
+        pointsInputDiv.appendChild(input);
+      }
+
+      plotButton.style.display = "inline-block";
+    });
+
+    plotButton.addEventListener("click", () => {
+      const inputs = pointsInputDiv.querySelectorAll("input");
+      const points = [];
+
+      for (let input of inputs) {
+        const match = input.value.match(/^\s*\(?\s*(-?\d+)\s*,\s*(-?\d+)\s*\)?\s*$/);
+        if (!match) {
+          alert(`Invalid input: "${input.value}". Use integer format like (2, -3).`);
+          return;
+        }
+        const x = parseInt(match[1]);
+        const y = parseInt(match[2]);
+        points.push({ x, y });
+      }
+
+      points.sort((a, b) => a.x - b.x);
+
+      const xs = points.map(p => p.x);
+      const ys = points.map(p => p.y);
+
+      // Find min/max for nice integer padding
+      const minX = Math.min(...xs) - 1;
+      const maxX = Math.max(...xs) + 1;
+      const minY = Math.min(...ys) - 1;
+      const maxY = Math.max(...ys) + 1;
+
+      const data = {
+        datasets: [{
+          label: 'Points',
+          data: points,
+          borderColor: '#007bff',
+          backgroundColor: 'red',
+          showLine: true,
+          pointRadius: 6,
+          borderWidth: 2,
+        }]
+      };
+
+      const config = {
+        type: 'scatter',
+        data,
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            x: {
+              title: { display: true, text: 'X Axis' },
+              ticks: {
+                stepSize: 1,   // integers only
+                callback: value => Number.isInteger(value) ? value : null
+              },
+              min: minX,
+              max: maxX,
+              grid: { color: "#ccc" }
+            },
+            y: {
+              title: { display: true, text: 'Y Axis' },
+              ticks: {
+                stepSize: 1,
+                callback: value => Number.isInteger(value) ? value : null
+              },
+              min: minY,
+              max: maxY,
+              grid: { color: "#ccc" }
+            }
+          },
+          plugins: {
+            legend: { display: false }
+          }
+        }
+      };
+
+      if (chart) chart.destroy();
+      chart = new Chart(ctx, config);
+    });
+  </script>
+</body>
+</html>
